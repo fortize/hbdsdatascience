@@ -15,7 +15,8 @@ output:
 ******
 Load libraries (ggplot2,data.table,corrplot,lubridate,dplyr,doParallel,ggmap)
 ```{r librerias, include=FALSE}
-if(! "tm" %in% installed.packages()) install.packages("tm",dependencies = TRUE)
+if(! "tm" %in% installed.packages()) 
+  install.packages("tm",dependencies = TRUE)
 library(tm)
 if(! "pdftools" %in% installed.packages()) 
   install.packages("pdftools",dependencies = TRUE)
@@ -33,18 +34,8 @@ gc();
 ## Carga de datos
 ******
 ```{r descriptiva, echo=FALSE, message= FALSE}
-# Cargamos los datos datasets macro, train y test
+# Cargamos los datos de los pdfs
 mainDir <- "c:/tmp/hbdsdatascience/data/Invoices"
-
-if (dir.exists(mainDir)){
-    setwd(file.path(mainDir))
-} else {
-    dir.create(file.path(mainDir))
-    setwd(file.path(mainDir))
-}
-
-directorio_trabajo <- setwd(mainDir)
-getwd()
 
 # Con la libreria DoParallel vamos a emplear el proceso en paralelo para los 
 # procesadores de mi máquina (Windows 10) que vamos a detectar automáticamente
@@ -52,27 +43,23 @@ cl <- makeCluster(detectCores())
 registerDoParallel(cl)
 
 # Cargamos los ficheros del directorio especifico
-file_vector <- list.files(path = mainDir)
+files <- list.files(path = mainDir,pattern = "pdf$" ,all.files=TRUE,
+    full.names=TRUE)
 
-pdf_list <- file_vector[grepl(".pdf",file_list)]
+# Recorremos todos los ficheros
+for (i in 1:length(files)){
+  text <- pdf_text(files[i])
+  text2 <- strsplit(text, "\n")
+  head(text2[[1]])
+  print(text)
+  print(text2)
+}
+
 ```
 
 ******
 ## Lectura pdfs
 ******
 ```{r descriptiva, echo=FALSE, message= FALSE}
-corpus_raw <- data.frame("Total" = c(),"text" = c())
- 
-for (i in 1:length(pdf_list)){
-print(i)
- pdf_text(paste("data/", pdf_list[i],sep = "")) %>% 
- strsplit("\n")-> document_text
-data.frame("Total" = gsub(x =pdf_list[i],pattern = ".pdf", replacement = ""), 
- "Total" = document_text, stringsAsFactors = FALSE) -> document
- 
-colnames(document) <- c("Total", "text")
-corpus_raw <- rbind(corpus_raw,document) 
-}
 
-corpus_raw %>% head()
 ```
