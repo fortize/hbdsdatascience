@@ -1,0 +1,78 @@
+---
+title: "HbdsDataScience Invoices"
+author: "Francisco Javier Ortiz Escuchas"
+date: "18 de marzo de 2019"
+output: 
+  word_document: null
+  html_document: default
+  number_sections: yes
+  theme: cosmo
+  highlight: default
+---
+
+******
+## Carga de librerias
+******
+Load libraries (ggplot2,data.table,corrplot,lubridate,dplyr,doParallel,ggmap)
+```{r librerias, include=FALSE}
+if(! "tm" %in% installed.packages()) install.packages("tm",dependencies = TRUE)
+library(tm)
+if(! "pdftools" %in% installed.packages()) 
+  install.packages("pdftools",dependencies = TRUE)
+library(pdftools)
+if(! "doParallel" %in% installed.packages()) 
+  install.packages("doParallel",dependencies = TRUE)
+library(doParallel)		# parallel processing
+
+#Limpiamos el espacio de trabajo
+rm(list = ls());
+gc();
+```
+
+******
+## Carga de datos
+******
+```{r descriptiva, echo=FALSE, message= FALSE}
+# Cargamos los datos datasets macro, train y test
+mainDir <- "c:/tmp/hbdsdatascience/data/Invoices"
+
+if (dir.exists(mainDir)){
+    setwd(file.path(mainDir))
+} else {
+    dir.create(file.path(mainDir))
+    setwd(file.path(mainDir))
+}
+
+directorio_trabajo <- setwd(mainDir)
+getwd()
+
+# Con la libreria DoParallel vamos a emplear el proceso en paralelo para los 
+# procesadores de mi máquina (Windows 10) que vamos a detectar automáticamente
+cl <- makeCluster(detectCores())
+registerDoParallel(cl)
+
+# Cargamos los ficheros del directorio especifico
+file_vector <- list.files(path = mainDir)
+
+pdf_list <- file_vector[grepl(".pdf",file_list)]
+```
+
+******
+## Lectura pdfs
+******
+```{r descriptiva, echo=FALSE, message= FALSE}
+corpus_raw <- data.frame("Total" = c(),"text" = c())
+ 
+for (i in 1:length(pdf_list)){
+print(i)
+ pdf_text(paste("data/", pdf_list[i],sep = "")) %>% 
+ strsplit("\n")-> document_text
+data.frame("Total" = gsub(x =pdf_list[i],pattern = ".pdf", replacement = ""), 
+ "Total" = document_text, stringsAsFactors = FALSE) -> document
+ 
+colnames(document) <- c("Total", "text")
+corpus_raw <- rbind(corpus_raw,document) 
+}
+
+corpus_raw %>% head()
+```
