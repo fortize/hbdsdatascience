@@ -22,6 +22,12 @@ a) Nos gustaría que en primer lugar te plantearas como afrontar la “limpieza” de
    El campo Supplments hay que cambiar los nulos por 0.
    El campo BOOKING_WINDOW hay que comprobar si tiene nulos y convertirlos a 0.
 b) En segundo lugar, queremos que hagas un resumen presentando la información consolidada a los niveles que consideres más oportunos.
+   1) Coste mensual por año.
+   2) Región/Ciudad más productiva.
+   3) Categoria más productivos.
+   4) Categoria con más suplementos contratados.
+   5) Region con Booking_Window menor.
+   6) Region/Country con mayor número de reservas.
 
 c) Ahora que te has familiarizado con las variables, nos gustaría que nos dijeras cuales son según tu criterio los 10 hoteles más interesantes/productivos y por qué.
 
