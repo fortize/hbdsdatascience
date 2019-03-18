@@ -1,0 +1,34 @@
+Ejercicio 1
+
+Para la segunda parte del proceso, hemos preparado un dataset con 1,5 M de registros que incluyen la siguiente información relevante sobre un conjunto de reservas de hotel:
+
+-CALDAY: Fecha de llegada
+-ZHOTEL: Código del hotel
+-ID_Ref: Identificador de la reserva en el hotel
+- Cost: Coste de la reserva
+-Invoice: Importe de la Factura enviada por el hotel
+-Region: Región en la que se encuentra el hotel
+-Country: País del hotel
+-Category: Categoría del hotel
+-Supplements: Número de suplementos adicionales a la reserva
+-Cancelled: Estado de la reserva (cancelada o no)
+-BOOKING_WINDOW: Diferencia temporal entre la fecha de creación de reserva y la de llegada al hotel
+
+a) Nos gustaría que en primer lugar te plantearas como afrontar la “limpieza” del dataset, nos dijeras que problemas has encontrado y como lo has solucionado.
+   El campo Cost es negativo hay que cambiar el signo.
+   El campo Invoice hay que convertirlo a un integer una factura no puede tener decimales.
+   El campo Region tiene más de una región en el mismo campo.
+   El campo Category hay que unificarlo.
+   El campo Supplments hay que cambiar los nulos por 0.
+   El campo BOOKING_WINDOW hay que comprobar si tiene nulos y convertirlos a 0.
+b) En segundo lugar, queremos que hagas un resumen presentando la información consolidada a los niveles que consideres más oportunos.
+
+c) Ahora que te has familiarizado con las variables, nos gustaría que nos dijeras cuales son según tu criterio los 10 hoteles más interesantes/productivos y por qué.
+
+d) Para terminar, querríamos que extrajeras alguna conclusión interesante sobre el conjunto de los datos, algo que te haya llamado la atención y que pudiera ser interesante para el negocio. Recuerda que tienes información a nivel de hotel, reserva, país o región.
+
+Eres libre de presentar los resultados como creas conveniente y tratar los datos con el programa que prefieras. Durante la exposición, deberás explicarnos tus razonamientos y los pasos que has seguido.
+
+Ejercicio 2
+
+En la carpeta de Invoices podrás encontrar un conjunto de 5 facturas en formato pdf. Queremos que leas el dato del coste total (campo “Total” dentro de “Total amounts”) de la factura y lo introduzcas en una tabla donde se pueda encontrar la referencia del cliente (“Client Ref.”) y el importe. El proceso deberá ser automático y adaptable a un conjunto de facturas mayor llegado el caso.
