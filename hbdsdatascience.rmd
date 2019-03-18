@@ -1,0 +1,333 @@
+---
+title: "HbdsDataScience"
+author: "Francisco Javier Ortiz Escuchas"
+date: "18 de marzo de 2019"
+output: 
+  word_document: null
+  html_document: default
+  number_sections: yes
+  theme: cosmo
+  highlight: default
+---
+
+******
+## Carga de librerias
+******
+Load libraries (ggplot2,data.table,corrplot,lubridate,dplyr,doParallel,ggmap)
+```{r librerias, include=FALSE}
+if(! "ggplot2" %in% installed.packages()) 
+  install.packages("ggplot2",dependencies = TRUE)
+library(ggplot2)
+if(! "data.table" %in% installed.packages()) install.packages("data.table",dependencies = TRUE)
+library(data.table)
+if(! "corrplot" %in% installed.packages()) 
+  install.packages("corrplot",dependencies = TRUE)
+library(corrplot)
+if(! "lubridate" %in% installed.packages()) 
+  install.packages("lubridate",dependencies = TRUE)
+library(lubridate)
+if(! "dplyr" %in% installed.packages()) 
+  install.packages("dplyr",dependencies = TRUE)
+library(dplyr)
+if(! "doParallel" %in% installed.packages()) 
+  install.packages("doParallel",dependencies = TRUE)
+library(doParallel)		# parallel processing
+
+#Limpiamos el espacio de trabajo
+rm(list = ls());
+gc();
+```
+
+******
+## Carga de datos y anï¿½lisis descriptivo de los datos
+******
+```{r descriptiva, echo=FALSE, message= FALSE}
+# Cargamos los datos datasets macro, train y test
+mainDir <- "c:/tmp/hbdsdatascience/data"
+
+if (dir.exists(mainDir)){
+    setwd(file.path(mainDir))
+} else {
+    dir.create(file.path(mainDir))
+    setwd(file.path(mainDir))
+}
+
+directorio_trabajo <- setwd(mainDir)
+getwd()
+
+# Con la libreria DoParallel vamos a emplear el proceso en paralelo para los 
+# procesadores de mi mÃ¡quina (Windows 10) que vamos a detectar automÃ¡ticamente
+cl <- makeCluster(detectCores())
+registerDoParallel(cl)
+
+# Cargamos los ficheros (macro,train y test) con la función fread
+hotels <- fread(file=paste(directorio_trabajo,"/Prueba_febrero.csv",sep = "", collapse = NULL), header=TRUE, sep=",", na.strings="NA", stringsAsFactors=TRUE)
+
+#Resumen del dataset train
+dim(hotels)
+
+#Comentado para evitar que el informe sea muy extenso.
+head(hotels)
+tail(hotels)
+summary(hotels)
+str(hotels)
+
+# Precios por aÃ±o
+boxplot(hotels$price_doc~year(train$timestamp),data=hotels, main="Precios x aÃ±o", xlab="AÃ±o", ylab="Precio")
+
+# Precios por sub-area
+plot(train$price_doc~hotels$sub_area, main="Precios x sub area", xlab="Sub-area", ylab="Precio", col="red")
+
+# Número de transacciones por area
+hotels %>% 
+    group_by(sub_area) %>%
+    summarize(n=n()) %>%
+    ggplot(aes(x=reorder(sub_area, n), y=n)) + 
+    #xlim(0,2000) +
+    geom_bar(stat='identity') + 
+    coord_flip() +
+    labs(y='Numero de transacciones', x='Sub-Area', title='NÃºmero de transacciones por Area')
+
+# Precios por metros cuadrado
+ggplot(aes(x=full_sq, y=price_doc), data = hotels) + 
+    geom_point(color='red', alpha=0.5) +
+    xlim(0, 200) + 
+    labs(x='M2', y='Precio', title='Precio por area en metros cuadrados')
+
+# Precios por aÃ±o construcciÃ³n
+ggplot(aes(x=build_year, y=price_doc), data=hotels) + 
+    xlim(1870, 2017) + 
+    geom_point(color='red')
+
+#train$fecha <- as_datetime(train$timestamp)
+
+# Habitaciones por propiedad
+ggplot(train, aes(x = num_room)) + geom_histogram(fill='red', bins=20) + 
+    xlim(0,12) + 
+    ggtitle('DistribuciÃ³n de habitaciones')
+
+# Tipo producto x metro cuadrado
+ggplot(train, aes(x = product_type, y = life_sq)) + geom_boxplot() + coord_flip()
+
+# Precio medio por tiempo
+train %>%
+    group_by(fecha = year(timestamp)) %>%
+    summarize(precio_medio = median(price_doc)) %>%
+    ggplot(aes(x = fecha, y = precio_medio)) +
+    geom_line(color = 'red') +
+    geom_smooth(method = 'lm', color = 'grey', alpha = 0.7) + 
+    ggtitle('Precio medio en el tiempo')
+
+# Depositos medio por tiempo
+macro %>%
+    group_by(fecha = year(timestamp)) %>%
+    summarize(depositos = median(deposits_value)) %>%
+    ggplot(aes(x = fecha, y = depositos)) +
+    geom_line(color = 'red') +
+    geom_smooth(method = 'lm', color = 'grey', alpha = 0.7) + 
+    ggtitle('Depositos medios en el tiempo')
+```
+
+******
+## Limpieza del dataset y selección de datos
+******
+```{r clean, echo=FALSE, message= FALSE}
+# Limpiamos las variables del dataset train que vamos a emplear
+train$full_sq[is.na(train$full_sq)] <- 0
+train$life_sq[is.na(train$life_sq)] <- 0
+train$build_year[is.na(train$build_year)] <- 0
+train$floor[is.na(train$floor)] <- 0
+train$max_floor[is.na(train$max_floor)] <- 0
+train$material[is.na(train$material)] <- 0
+train$num_room[is.na(train$num_room)] <- 0
+train$kitch_sq[is.na(train$kitch_sq)] <- 0
+train$state[is.na(train$state)] <- 0
+train$raion_popul[is.na(train$raion_popul)] <- 0
+train$work_all[is.na(train$work_all)] <- 0
+
+train[,timestamp := as.Date(timestamp)]
+train <- sapply(train,as.numeric)
+
+#SelecciÃ³n de datos para el subconjunto de datos de train
+train_sub <- subset(train,select = c(id,timestamp,full_sq,life_sq,floor,max_floor,material,build_year,num_room,kitch_sq,state,raion_popul,work_all,price_doc))
+
+# Creo el subconjunto de datos de macro con las variables que me parecen mÃ¡s relevantes
+macro_sub <- subset(macro,select = c(timestamp,deposits_value,deposits_growth,deposits_rate,mortgage_value,mortgage_growth,mortgage_rate,income_per_cap,real_dispos_income_per_cap_growth,salary,salary_growth,fixed_basket,unemployment,employment,invest_fixed_capital_per_cap,invest_fixed_assets))
+```
+******
+## AnÃ¡lisis exploratorio apoyado en algÃºn mÃ©todo NO supervisado (Clustering)
+******
+NormalizaciÃ³n de atributos
+```{r exploratory,eval=TRUE, echo=FALSE}
+# UniÃ³n de los subconjuntos de datos train y macro
+train_final <- merge(train_sub,macro_sub,"timestamp")
+
+# Matriz de correlaciÃ³n
+matCor <- cor(subset(train,select = c(id,full_sq,life_sq,floor,max_floor,material,build_year,num_room,kitch_sq,state,raion_popul,work_all,price_doc)))
+
+#Matriz de valores de train
+corrplot(cor(matCor, use="complete.obs"),method = "number",order ="alphabet")
+
+# Matriz de valores de macro
+corrplot(cor(macro_sub, use="complete.obs"),method = "number",order ="alphabet")
+
+# UniÃ³n de los subconjuntos de datos test y macro
+test_final <- merge(test_sub,macro_sub,"timestamp")
+
+#Realizamos 15 iteraciones empleando el indicador withniss obtendremos la suma de los cuadrados de las distancias entre los centros determinados por el algoritmo kmeans y los puntos que estÃ¡n dentro de cada cluster.
+kmeans(train_sub,centers=9)$tot.withinss
+wss <- (nrow(train_sub)-1)*sum(apply(train_sub,2,var))
+  for (i in 2:15) wss[i] <- sum(kmeans(train_sub,
+                                       centers=i)$withinss)
+
+#Dibujamos el grÃ¡fico para ver cual es el nÃºmero de clÃºsters mÃ¡s correcto para elegir
+plot(1:15, wss, type="b", xlab="Numero de Clusters",
+     ylab="Sumas de cuadrados dentro de los grupos",
+     main="Num de clusters Ã³ptimos",
+     pch=20, cex=2)
+
+kmeans.result <- kmeans(train_sub, centers=5)
+centros <- kmeans.result$centers[kmeans.result$cluster,]
+distancias <- sqrt(rowSums((train_sub - centros)^2))
+outliers <- order(distancias, decreasing=T)[1:5]
+train_sub[outliers,]
+
+#DetecciÃ³n de outliers
+plot(train_sub[,c("full_sq","life_sq","floor","max_floor","material","build_year","num_room","state","raion_popul","work_all","kitch_sq","price_doc")], main="DetecciÃ³n de outliers", pch="o", col=kmeans.result$cluster, cex=0.3, xlim=c(0, 750))
+points(kmeans.result$centers[,c("full_sq","life_sq","floor","max_floor","material","build_year","num_room","state","raion_popul","work_all","kitch_sq","price_doc")], col=1:5, pch=8, cex=1.5)
+points(train_sub[outliers,c("full_sq","life_sq","floor","max_floor","material","build_year","num_room","state","raion_popul","work_all","kitch_sq","price_doc")], col=4, pch="+", cex=1.5)
+points(matrix(colMeans(train_sub),nrow=1,ncol=2),cex=3,col=12,pch=19)
+```
+******
+## ParÃ¡metros comunes para todas las ejecuciones
+******
+```{r PARAMS, echo=FALSE, message= FALSE}
+# ParametrizaciÃ³n training control
+control <- trainControl(method = "repeatedcv",   
+                                 number = 6)
+
+```
+******
+## SelecciÃ³n de variables, elecciÃ³n, construcciÃ³n y optimizaciÃ³n de al menos dos modelos machine Learning supervisados distintos (glmboost - Caret)
+******
+```{r GLMBOOST, echo=FALSE, message= FALSE}
+glmboost.model <- train(price_doc ~ .,
+                            data = train_final,
+                            method = "glmboost",
+                            trControl = control,
+                            metric='RMSE',
+                            maximize=FALSE)
+
+# PredicciÃ³n de la variable price_doc
+glmboost.pred <- predict(glmboost.model,test_final)
+
+# GrÃ¡fico de rendimiento del modelo gmlboost
+glmboost.model$bestTune
+plot(glmboost.model)
+
+# Devolvemos los valores id transancciÃ³n y precio en un fichero tipo csv
+write.table(data.table(id=test_final$id, price_doc=glmboost.pred), "Estudio_final/Datos/submission_glmboost.csv", sep=",", dec=".", quote=FALSE, row.names=FALSE)
+
+```
+******
+## SelecciÃ³n de variables, elecciÃ³n, construcciÃ³n y optimizaciÃ³n de al menos dos modelos machine Learning supervisados distintos (gbm - Caret)
+******
+Realizamos las misma operaciones que para el primer modelo
+```{r GBM, echo=FALSE, message= FALSE}
+#Grid <- expand.grid(n.trees = seq(50,1000,50), interaction.depth = c(30), shrinkage = c(0.1), n.minobsinnode = 3)
+gbm.model <- train(price_doc ~ .,
+                            data = train_final,
+                            method = "gbm",
+                            trControl = control,
+                            #tuneGrid = Grid,
+                            metric='RMSE',
+                            maximize=FALSE)
+
+# PredicciÃ³n de la variable price_doc
+gbm.pred <- predict(gbm.model,test_final)
+
+# GrÃ¡fico de rendimiento del modelo gbm
+gbm.model$bestTune
+plot(gbm.model)
+
+# Devolvemos los valores id transancciÃ³n y precio en un fichero tipo csv
+write.table(data.table(id=test_final$id, price_doc=gbm.pred), "Estudio_final/Datos/submission_gbm.csv", sep=",", dec=".", quote=FALSE, row.names=FALSE)
+```
+******
+## SelecciÃ³n de variables, elecciÃ³n, construcciÃ³n y optimizaciÃ³n de al menos dos modelos machine Learning supervisados distintos (lm)
+******
+Realizamos las misma operaciones que para el primer modelo
+```{r LM, echo=FALSE, message= FALSE}
+lm.model <- train(price_doc ~ .,
+                            data = train_final,
+                            method = "lm",
+                            trControl = control,
+                            intercept = TRUE)
+
+# PredicciÃ³n de la variable price_doc
+lm.pred <- predict(lm.model,test_final)
+
+# GrÃ¡fico de rendimiento del modelo lm
+lm.model$bestTune
+summary(lm.model)
+
+# Devolvemos los valores id transancciÃ³n y precio en un fichero tipo csv
+write.table(data.table(id=test_final$id, price_doc=lm.pred), "Estudio_final/Datos/submission_lm.csv", sep=",", dec=".", quote=FALSE, row.names=FALSE)
+```
+******
+## SelecciÃ³n de variables, elecciÃ³n, construcciÃ³n y optimizaciÃ³n de al menos dos modelos machine Learning supervisados distintos (xgbTree)
+******
+```{r XGBTREE, echo=FALSE, message= FALSE}
+xgbtree.model <- train(price_doc ~ .,
+                            data = train_final,
+                            method = "xgbTree",
+                            trControl = control)
+
+# PredicciÃ³n de la variable price_doc
+xgbtree.pred <- predict(xgbtree.model,test_final)
+
+# GrÃ¡fico de rendimiento del modelo xgbtree
+xgbtree.model$bestTune
+plot(xgbtree.model)
+
+# Devolvemos los valores id transancciÃ³n y precio en un fichero tipo csv
+write.table(data.table(id=test_final$id, price_doc=xgbtree.pred), "Estudio_final/Datos/submission_xgbtree.csv", sep=",", dec=".", quote=FALSE, row.names=FALSE)
+```
+******
+## SelecciÃ³n de variables, elecciÃ³n, construcciÃ³n y optimizaciÃ³n de al menos dos modelos machine Learning supervisados distintos (xgblinear)
+******
+```{r XGBLINEAR, echo=FALSE, message= FALSE}
+xgblinear.model <- train(price_doc ~ .,
+                            data = train_final,
+                            method = "xgbLinear",
+                            trControl = control)
+
+# PredicciÃ³n de la variable price_doc
+xgblinear.pred <- predict(xgblinear.model,test_final)
+
+# GrÃ¡fico de rendimiento del modelo xgblinear
+xgblinear.model$bestTune
+plot(xgblinear.model)
+
+# Devolvemos los valores id transancciÃ³n y precio en un fichero tipo csv
+write.table(data.table(id=test_final$id, price_doc=xgblinear.pred), "Estudio_final/Datos/submission_xgblinear.csv", sep=",", dec=".", quote=FALSE, row.names=FALSE)
+```
+******
+## Evaluaciï¿½n y comparaciï¿½n de dichos modelos realizados
+******
+Gracias al paquete Caret podremos comparar los modelos.
+```{r comparation, echo=FALSE, message= FALSE}
+models <- list(glmboost.model,gbm.model,lm.model,xgbtree.model,xgblinear.model)
+compar.models <- resamples(models)
+summary(compar.models)
+```
+******
+## Grï¿½ficos comparativo de eficienta de los modelos
+******
+Mediante el grï¿½fico podemos ver como el modelo 3 (RMSE - Rsquared) tiene una precisiï¿½n mayor que los otros modelos.
+```{r graphics, echo=FALSE, message= FALSE}
+dotplot(compar.models)
+
+#Paramos la paralelizaciÃ³n
+stopCluster(cl)
+```
