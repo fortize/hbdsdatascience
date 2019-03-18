@@ -21,6 +21,12 @@ library(tm)
 if(! "pdftools" %in% installed.packages()) 
   install.packages("pdftools",dependencies = TRUE)
 library(pdftools)
+if(! "magrittr" %in% installed.packages()) 
+  install.packages("magrittr",dependencies = TRUE)
+library(magrittr)
+if(! "dplyr" %in% installed.packages()) 
+  install.packages("dplyr",dependencies = TRUE)
+library(magrittr)
 if(! "doParallel" %in% installed.packages()) 
   install.packages("doParallel",dependencies = TRUE)
 library(doParallel)		# parallel processing
@@ -45,16 +51,6 @@ registerDoParallel(cl)
 # Cargamos los ficheros del directorio especifico
 files <- list.files(path = mainDir,pattern = "pdf$" ,all.files=TRUE,
     full.names=TRUE)
-
-# Recorremos todos los ficheros
-for (i in 1:length(files)){
-  text <- pdf_text(files[i])
-  text2 <- strsplit(text, "\n")
-  head(text2[[1]])
-  print(text)
-  print(text2)
-}
-
 ```
 
 ******
@@ -62,4 +58,16 @@ for (i in 1:length(files)){
 ******
 ```{r descriptiva, echo=FALSE, message= FALSE}
 
+# Creamos la tabla
+corpus_raw <- data.frame("Client Ref." = c(),"importe" = c(), "Total" = c())
+
+# Recorremos todos los ficheros
+for (i in 1:length(files)){
+ pdf_text(files[i]) %>% 
+ strsplit("\n")-> document_text
+data.frame("Client Ref." = gsub(x = files[i],pattern = ".pdf", replacement = ""),  "importe" = document_text, stringsAsFactors = FALSE, "Total" = 100) -> document
+}
+
+colnames(document) <- c("Client Ref.", "importe", "Total")
+corpus_raw <- rbind(corpus_raw,document) 
 ```
