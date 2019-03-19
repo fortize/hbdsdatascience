@@ -2,12 +2,13 @@
 title: "HbdsDataScience Invoices"
 author: "Francisco Javier Ortiz Escuchas"
 date: "18 de marzo de 2019"
-output: 
-  word_document: null
+output:
   html_document: default
+  word_document: null
   number_sections: yes
-  theme: cosmo
   highlight: default
+  theme: cosmo
+  pdf_document: default
 ---
 
 ******
@@ -39,7 +40,7 @@ gc();
 ******
 ## Carga de datos
 ******
-```{r descriptiva, echo=FALSE, message= FALSE}
+```{r carga datos, echo=TRUE, message= FALSE}
 # Cargamos los datos de los pdfs
 mainDir <- "/home/jortiz/tmp/hbdsdatascience/data/Invoices"
 
@@ -56,7 +57,7 @@ files <- list.files(path = mainDir,pattern = "pdf$" ,all.files=TRUE,
 ******
 ## Lectura pdfs
 ******
-```{r descriptiva, echo=FALSE, message= FALSE}
+```{r lectura pdfs, echo=TRUE, message= FALSE}
 
 # Creamos la tabla
 tableData <- data.frame("Client Ref." = c(),"importe" = c(), "Total" = c())
@@ -65,15 +66,13 @@ read <- readPDF(control = list(text = "-layout"))
 # Recorremos todos los ficheros
 for (i in 1:length(files)){
 text <- strsplit(pdf_text(files[i]), "\n")
-text[[1]]
-
-#document <- Corpus(URISource(files[i]), readerControl = list(reader = read))
-#doc <- content(document[[1]])
-
-tableData <- rbind(tableData,data.frame("Client Ref." = substr(text[[1]][9],0,10) , "importe" =  substr(text[[1]][9],0,10), "Total" = substr(text[[1]][13],7,10)))
-#document <- data.frame("Client Ref." = grep("Total\n", doc),  "importe" =  substr(doc,length(doc),10), "Total" = 0)
+tableData <- rbind(tableData,data.frame("Client Ref." = substr(text[[1]][9],0,10) , "importe" =  substr(text[[1]][9],nchar(text[[1]][9])-3,nchar(text[[1]][9])), "Total" = substr(text[[1]][13],7,10)))
 }
+```
 
-#colnames(document) <- c("Client Ref.", "Total Client", "Total")
-#tableData <- rbind(tableData,document) 
+******
+## Visualización datos
+******
+```{r visualizar datos, echo=TRUE, message= FALSE}
+head(tableData)
 ```
