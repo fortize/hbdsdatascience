@@ -13,7 +13,7 @@ output:
 ******
 ## Carga de librerias
 ******
-Load libraries (ggplot2,data.table,corrplot,lubridate,dplyr,doParallel,ggmap)
+Load libraries (tm,pdftools,magrittr,dplyr,doParallel)
 ```{r librerias, include=FALSE}
 if(! "tm" %in% installed.packages()) 
   install.packages("tm",dependencies = TRUE)
@@ -41,7 +41,7 @@ gc();
 ******
 ```{r descriptiva, echo=FALSE, message= FALSE}
 # Cargamos los datos de los pdfs
-mainDir <- "c:/tmp/hbdsdatascience/data/Invoices"
+mainDir <- "/home/jortiz/tmp/hbdsdatascience/data/Invoices"
 
 # Con la libreria DoParallel vamos a emplear el proceso en paralelo para los 
 # procesadores de mi máquina (Windows 10) que vamos a detectar automáticamente
@@ -59,15 +59,21 @@ files <- list.files(path = mainDir,pattern = "pdf$" ,all.files=TRUE,
 ```{r descriptiva, echo=FALSE, message= FALSE}
 
 # Creamos la tabla
-corpus_raw <- data.frame("Client Ref." = c(),"importe" = c(), "Total" = c())
+tableData <- data.frame("Client Ref." = c(),"importe" = c(), "Total" = c())
+read <- readPDF(control = list(text = "-layout"))
 
 # Recorremos todos los ficheros
 for (i in 1:length(files)){
- pdf_text(files[i]) %>% 
- strsplit("\n")-> document_text
-data.frame("Client Ref." = gsub(x = files[i],pattern = ".pdf", replacement = ""),  "importe" = document_text, stringsAsFactors = FALSE, "Total" = 100) -> document
+text <- strsplit(pdf_text(files[i]), "\n")
+text[[1]]
+
+#document <- Corpus(URISource(files[i]), readerControl = list(reader = read))
+#doc <- content(document[[1]])
+
+tableData <- rbind(tableData,data.frame("Client Ref." = substr(text[[1]][9],0,10) , "importe" =  substr(text[[1]][9],0,10), "Total" = substr(text[[1]][13],7,10)))
+#document <- data.frame("Client Ref." = grep("Total\n", doc),  "importe" =  substr(doc,length(doc),10), "Total" = 0)
 }
 
-colnames(document) <- c("Client Ref.", "importe", "Total")
-corpus_raw <- rbind(corpus_raw,document) 
+#colnames(document) <- c("Client Ref.", "Total Client", "Total")
+#tableData <- rbind(tableData,document) 
 ```

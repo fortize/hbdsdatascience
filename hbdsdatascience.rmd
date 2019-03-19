@@ -13,7 +13,7 @@ output:
 ******
 ## Carga de librerias
 ******
-Load libraries (ggplot2,data.table,corrplot,lubridate,dplyr,doParallel,ggmap)
+Load libraries (ggplot2,data.table,corrplot,lubridate,dplyr,doParallel,schoolmath)
 ```{r librerias, include=FALSE}
 if(! "ggplot2" %in% installed.packages()) 
   install.packages("ggplot2",dependencies = TRUE)
@@ -46,7 +46,7 @@ gc();
 ******
 ```{r descriptiva, echo=FALSE, message= FALSE}
 # Cargamos los datos datasets macro, train y test
-mainDir <- "c:/tmp/hbdsdatascience/data"
+mainDir <- "/home/jortiz/tmp/hbdsdatascience/data"
 
 if (dir.exists(mainDir)){
     setwd(file.path(mainDir))
@@ -67,12 +67,13 @@ registerDoParallel(cl)
 hotels <- fread(file=paste(directorio_trabajo,"/Prueba_febrero.csv",sep = "", collapse = NULL), header=TRUE, sep=",", na.strings="NA", stringsAsFactors=TRUE)
 
 # Limpiamos las variables del dataset hotels que vamos a emplear
-hotels$Cost[is.negative(hotels$Cost)] <- hotels$Cost*(-1)
-hotels$Invoice[is.decimal(hotels$Invoice)] <- as.integer(hotels$Invoice)
-hotels$Supplements[is.na(hotels$Supplements)] <- 0
-hotels$Country[(hotels$Country)] <- toupper(hotels$Country)
-hotels$BOOKING_WINDOW[is.na(hotels$BOOKING_WINDOW)] <- 0
-hotels[,timestamp := as.Date(CALDAY)]
+#hotels[,Cost := as.double(hotels$Cost)][is.negative(Cost), Cost := hotels$Cost*(-1)]
+#hotels$Cost[is.negative(hotels$Cost)] <- hotels$Cost*(-1)
+#hotels$Invoice[is.decimal(hotels$Invoice)] <- as.integer(hotels$Invoice)
+#hotels$Supplements[is.na(hotels$Supplements)] <- 0
+#hotels$Country[(hotels$Country)] <- toupper(hotels$Country)
+#hotels$BOOKING_WINDOW[is.na(hotels$BOOKING_WINDOW)] <- 0
+#hotels[,timestamp := as.Date(CALDAY)]
 
 #Resumen del dataset train
 dim(hotels)
@@ -95,20 +96,19 @@ boxplot(hotels$Cost~year(hotels$CALDAY),data=hotels, main="Cost x year", xlab="y
 plot(hotels$Cost~hotels$Country, main="Cost x Country", xlab="Country", ylab="Cost", col="red")
 
 # Número de transacciones por area
-hotels %>% 
+hotels %>%
     group_by(Category) %>%
-    summarize(n=n()) %>%
-    ggplot(aes(x=reorder(Category, n), y=n)) + 
-    #xlim(0,2000) +
-    geom_bar(stat='identity') + 
-    coord_flip() +
-    labs(y='Numero de hotels', x='Country', title='Cost per Category')
+    summarize(precio_medio = median(Cost)) %>%
+    ggplot(aes(x = Category, y = precio_medio), size = 15) +
+    geom_line(color = 'red') +
+    geom_smooth(method = 'lm', color = 'grey', alpha = 0.7) + 
+    ggtitle('Precio medio en el tiempo')
 
 # Número de transacciones por area
 hotels %>% 
     group_by(Country) %>%
-    summarize(n=n()) %>%
-    ggplot(aes(x=reorder(Country, n), y=n)) + 
+    summarize(precio_medio = median(Cost)) %>%
+    ggplot(aes(x = Country, y = precio_medio)) +
     #xlim(0,2000) +
     geom_bar(stat='identity') + 
     coord_flip() +
@@ -125,18 +125,44 @@ hotels %>%
     geom_line(color = 'red') +
     geom_smooth(method = 'lm', color = 'grey', alpha = 0.7) + 
     ggtitle('Precio medio en el tiempo')
+
+# Top 10 hoteles más interesantes/productivos
+hotels %>%
+    group_by(totHotels = ZHOTEL) %>%
+    summarize(totCost = sum(Cost)) %>%
+    ggplot(aes(x = totHotels, y = totCost), size = 10) +
+    geom_line(color = 'red') +
+    geom_smooth(method = 'lm', color = 'grey', alpha = 0.7) + 
+    ggtitle('Top facturación 10 hoteles ')
+
+    top10hotels <- hotels$ZHOTEL [order (hotels$Cost, decreasing = TRUE)]
+    ggplot (data = subset (df, hotels$ZHOTEL %in% top10hotels [1 : 5]), 
+            aes (Cost, ZHOTEL)) +
+            geom_point (aes (color = factor (ZHOTEL)), size = 10)
+
+```
+******
+## Prueba gráfico
+******
+```{r clean, echo=FALSE, message= FALSE}
+    df2017 <- subset (hotels, year(CALDAY) == 2017)
+    top10hotels <- df2017$ZHOTEL [order (df2017$Cost, decreasing = TRUE)]
+    ggplot (data = subset (hotels, ZHOTEL %in% top10hotels [1 : 5]), 
+            aes (Cost, ZHOTEL)) +
+            geom_point (aes (color = factor (year(CALDAY) == 2017)), size = 10)
 ```
 
 ******
-## Análisis exploratorio (Clustering)
+## Analisis variables correlación
 ******
 Normalización de atributos
 ```{r exploratory,eval=TRUE, echo=FALSE}
-# Matriz de correlaciÃ³n
-matCor <- cor(subset(hotels,select = c(CALDAY,ZHOTELID_Ref,Cost,Invoice,Region,Country,Category,Supplements,Cancelled,BOOKING_WINDOW)))
+# Matriz de correlación
+train <- sapply(hotels,as.numeric)
+matCor <- cor(subset(train,select = c(CALDAY,ZHOTEL,ID_Ref,Cost,Invoice,Region,Country,Category,Supplements,Cancelled,BOOKING_WINDOW)))
 
 #Matriz de valores de train
-corrplot(cor(matCor, use="complete.obs"),method = "number",order ="alphabet")
+corrplot(cor(matCor, use="pairwise.complete.obs"),method = "number",order ="alphabet")
 ```
 
 #Paramos la paralelización
